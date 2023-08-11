@@ -39,13 +39,17 @@ class Model(nn.Module):
         return heatmap
    
     def forward(self, inputs, targets, meta_info, mode):
-        input_img = inputs['img']
+        input_img = inputs['img']  # input_img.shape: torch.Size([16, 3, 256, 256])
         batch_size = input_img.shape[0]
-        img_feat = self.backbone_net(input_img)
+        img_feat = self.backbone_net(input_img)  # img_feat.shape: torch.Size([16, 3, 256, 256])
         joint_heatmap_out, rel_root_depth_out, hand_type = self.pose_net(img_feat)
+        # joint_heatmap_out.shape: torch.Size([16, 42, 64, 64, 64])
+        # rel_root_depth_out.shape: torch.Size([16, 1])
+        # hand_type.shape: torch.Size([16, 2])
         
         if mode == 'train':
             target_joint_heatmap = self.render_gaussian_heatmap(targets['joint_coord'])
+            # target_joint_heatmap.shape: torch.Size([16, 42, 64, 64, 64])
             
             loss = {}
             loss['joint_heatmap'] = self.joint_heatmap_loss(joint_heatmap_out, target_joint_heatmap, meta_info['joint_valid'])

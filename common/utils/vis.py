@@ -117,8 +117,8 @@ def vis_3d_keypoints(kps_3d, score, skeleton, filename, score_thr=0.4, line_widt
         if score[pid] > score_thr and pid != -1:
             ax.scatter(kps_3d[pid,0], kps_3d[pid,2], -kps_3d[pid,1], c = np.array(rgb_dict[parent_joint_name]).reshape(1,3)/255., marker='o')
 
-    #plt.show()
-    #cv2.waitKey(0)
+    plt.show()
+    cv2.waitKey(0)
     
     fig.savefig(osp.join(cfg.vis_dir, filename), dpi=fig.dpi)
 

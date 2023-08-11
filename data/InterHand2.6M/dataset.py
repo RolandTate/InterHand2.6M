@@ -12,6 +12,7 @@ import cv2
 from glob import glob
 import os.path as osp
 from config import cfg
+from tqdm import tqdm
 from utils.preprocessing import load_img, load_skeleton, get_bbox, process_bbox, augmentation, transform_input_to_output_space, trans_point2d
 from utils.transforms import world2cam, cam2pixel, pixel2cam
 from utils.vis import vis_keypoints, vis_3d_keypoints
@@ -60,7 +61,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             print("Get bbox and root depth from groundtruth annotation")
         
-        for aid in db.anns.keys():
+        for aid in tqdm(db.anns.keys()):
             ann = db.anns[aid]
             image_id = ann['image_id']
             img = db.loadImgs(image_id)[0]
@@ -81,7 +82,8 @@ class Dataset(torch.utils.data.Dataset):
             # if root is not valid -> root-relative 3D pose is also not valid. Therefore, mark all joints as invalid
             joint_valid[self.joint_type['right']] *= joint_valid[self.root_joint_idx['right']]
             joint_valid[self.joint_type['left']] *= joint_valid[self.root_joint_idx['left']]
-            hand_type = ann['hand_type']
+            # hand_type = ann['hand_type']
+            hand_type = ann['hand_type'].lower()
             hand_type_valid = np.array((ann['hand_type_valid']), dtype=np.float32)
             
             if (self.mode == 'val' or self.mode == 'test') and cfg.trans_test == 'rootnet':
@@ -102,6 +104,8 @@ class Dataset(torch.utils.data.Dataset):
                 self.datalist_ih.append(data)
             if seq_name not in self.sequence_names:
                 self.sequence_names.append(seq_name)
+            # if len(self.datalist_ih) > 1000 and len(self.datalist_sh) > 1000:  # 控制数据量
+            #     break
 
         self.datalist = self.datalist_sh + self.datalist_ih
         print('Number of annotations in single hand sequences: ' + str(len(self.datalist_sh)))

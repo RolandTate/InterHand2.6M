@@ -13,7 +13,7 @@ import torch.backends.cudnn as cudnn
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', type=str, dest='gpu_ids')
+    parser.add_argument('--gpu', type=str, dest='gpu_ids', default='0')
     parser.add_argument('--continue', dest='continue_train', action='store_true')
     args = parser.parse_args()
 
