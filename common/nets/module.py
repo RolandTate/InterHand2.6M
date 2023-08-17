@@ -45,15 +45,27 @@ class PoseNet(nn.Module):
         return coord
 
     def forward(self, img_feat):
+        # img_feat.shape: torch.Size([16, 2048, 8, 8])
         joint_img_feat_1 = self.joint_deconv_1(img_feat)
+        # joint_img_feat_1.shape: torch.Size([16, 256, 64, 64])
         joint_heatmap3d_1 = self.joint_conv_1(joint_img_feat_1).view(-1,self.joint_num,cfg.output_hm_shape[0],cfg.output_hm_shape[1],cfg.output_hm_shape[2])
+        # self.joint_conv_1(joint_img_feat_1).shape: torch.Size([16, 1344, 64, 64])
+        # joint_heatmap3d_1.shape: torch.Size([16, 21, 64, 64, 64])
         joint_img_feat_2 = self.joint_deconv_2(img_feat)
+        # joint_img_feat_2.shape: torch.Size([16, 256, 64, 64])
         joint_heatmap3d_2 = self.joint_conv_2(joint_img_feat_2).view(-1,self.joint_num,cfg.output_hm_shape[0],cfg.output_hm_shape[1],cfg.output_hm_shape[2])
+        # self.joint_conv_2(joint_img_feat_2).shape: torch.Size([16, 1344, 64, 64])
+        # joint_heatmap3d_2.shape: torch.Size([16, 21, 64, 64, 64])
         joint_heatmap3d = torch.cat((joint_heatmap3d_1, joint_heatmap3d_2),1)
+        # joint_heatmap3d.shape: torch.Size([16, 42, 64, 64, 64])
         
         img_feat_gap = F.avg_pool2d(img_feat, (img_feat.shape[2],img_feat.shape[3])).view(-1,2048)
+        # img_feat_gap.shape: torch.Size([16, 2048])
         root_heatmap1d = self.root_fc(img_feat_gap)
+        # root_heatmap1d.shape: torch.Size([16, 64])
         root_depth = self.soft_argmax_1d(root_heatmap1d).view(-1,1)
+        # root_depth.shape: torch.Size([16, 1])
         hand_type = torch.sigmoid(self.hand_fc(img_feat_gap))
+        # hand_type.shape: torch.Size([16, 2])
 
         return joint_heatmap3d, root_depth, hand_type

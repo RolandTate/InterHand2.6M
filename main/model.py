@@ -10,6 +10,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from nets.module import BackboneNet, PoseNet
 from nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss
+
+from common.nets.pyramid_vig import pvig_s_224_gelu
 from config import cfg
 import math
 
@@ -41,7 +43,7 @@ class Model(nn.Module):
     def forward(self, inputs, targets, meta_info, mode):
         input_img = inputs['img']  # input_img.shape: torch.Size([16, 3, 256, 256])
         batch_size = input_img.shape[0]
-        img_feat = self.backbone_net(input_img)  # img_feat.shape: torch.Size([16, 3, 256, 256])
+        img_feat = self.backbone_net(input_img)  # img_feat.shape: torch.Size([16, 2048, 8, 8])
         joint_heatmap_out, rel_root_depth_out, hand_type = self.pose_net(img_feat)
         # joint_heatmap_out.shape: torch.Size([16, 42, 64, 64, 64])
         # rel_root_depth_out.shape: torch.Size([16, 1])
@@ -94,6 +96,7 @@ def init_weights(m):
 
 def get_model(mode, joint_num):
     backbone_net = BackboneNet()
+    # backbone_net = pvig_s_224_gelu()
     pose_net = PoseNet(joint_num)
 
     if mode == 'train':

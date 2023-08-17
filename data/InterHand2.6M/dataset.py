@@ -104,8 +104,8 @@ class Dataset(torch.utils.data.Dataset):
                 self.datalist_ih.append(data)
             if seq_name not in self.sequence_names:
                 self.sequence_names.append(seq_name)
-            # if len(self.datalist_ih) > 1000 and len(self.datalist_sh) > 1000:  # 控制数据量
-            #     break
+            if len(self.datalist_ih) > 64 and len(self.datalist_sh) > 64:  # 控制数据量
+                break
 
         self.datalist = self.datalist_sh + self.datalist_ih
         print('Number of annotations in single hand sequences: ' + str(len(self.datalist_sh)))
