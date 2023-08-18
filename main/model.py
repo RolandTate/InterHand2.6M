@@ -95,12 +95,12 @@ def init_weights(m):
         nn.init.constant_(m.bias,0)
 
 def get_model(mode, joint_num):
-    backbone_net = BackboneNet()
-    # backbone_net = pvig_s_224_gelu()
+    # backbone_net = BackboneNet()
+    backbone_net = pvig_s_224_gelu()
     pose_net = PoseNet(joint_num)
 
     if mode == 'train':
-        backbone_net.init_weights()
+        # backbone_net.init_weights()
         pose_net.apply(init_weights)
 
     model = Model(backbone_net, pose_net)

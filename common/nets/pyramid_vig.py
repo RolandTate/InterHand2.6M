@@ -121,8 +121,10 @@ class DeepGCN(torch.nn.Module):
         max_dilation = 49 // max(num_knn)
         
         self.stem = Stem(out_dim=channels[0], act=act)
-        self.pos_embed = nn.Parameter(torch.zeros(1, channels[0], 224//4, 224//4))
-        HW = 224 // 4 * 224 // 4
+        # self.pos_embed = nn.Parameter(torch.zeros(1, channels[0], 224//4, 224//4))
+        # HW = 224 // 4 * 224 // 4
+        self.pos_embed = nn.Parameter(torch.zeros(1, channels[0], 256 // 4, 256 // 4))
+        HW = 256 // 4 * 256 // 4
 
         self.backbone = nn.ModuleList([])
         idx = 0

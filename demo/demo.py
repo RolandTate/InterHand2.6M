@@ -56,7 +56,7 @@ skeleton = load_skeleton(osp.join('../data/InterHand2.6M/annotations/skeleton.tx
 
 # snapshot load
 # model_path = './snapshot_%d.pth.tar' % int(args.test_epoch)
-model_path = '../output/model_dump/snapshot_7.pth.tar'
+model_path = '../output/model_dump/snapshot_19.pth.tar'
 assert osp.exists(model_path), 'Cannot find model at ' + model_path
 print('Load checkpoint from {}'.format(model_path))
 model = get_model('test', joint_num)
