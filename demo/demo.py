@@ -87,13 +87,16 @@ with torch.no_grad():
     out = model(inputs, targets, meta_info, 'test')
 img = img[0].cpu().numpy().transpose(1,2,0) # cfg.input_img_shape[1], cfg.input_img_shape[0], 3
 joint_coord = out['joint_coord'][0].cpu().numpy() # x,y pixel, z root-relative discretized depth
+# joint_coord.shape: (42, 3)
 rel_root_depth = out['rel_root_depth'][0].cpu().numpy() # discretized depth
 hand_type = out['hand_type'][0].cpu().numpy() # handedness probability
 
 # restore joint coord to original image space and continuous depth space
 joint_coord[:,0] = joint_coord[:,0] / cfg.output_hm_shape[2] * cfg.input_img_shape[1]
 joint_coord[:,1] = joint_coord[:,1] / cfg.output_hm_shape[1] * cfg.input_img_shape[0]
+# 完成从图像空间到三维边界框空间的转换。
 joint_coord[:,:2] = np.dot(inv_trans, np.concatenate((joint_coord[:,:2], np.ones_like(joint_coord[:,:1])),1).transpose(1,0)).transpose(1,0)
+# 从热图空间映射到三维边界框空间
 joint_coord[:,2] = (joint_coord[:,2]/cfg.output_hm_shape[0] * 2 - 1) * (cfg.bbox_3d_size/2)
 
 # restore right hand-relative left hand depth to continuous depth space

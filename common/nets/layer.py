@@ -46,7 +46,7 @@ def make_deconv_layers(feat_dims, bnrelu_final=True):
     layers = []
     for i in range(len(feat_dims)-1):
         layers.append(
-            nn.ConvTranspose2d(
+            nn.ConvTranspose2d(  # (input-1)*stride+ output_padding -2*padding+kernel_size, (input-1)*2+2,->16,32,64
                 in_channels=feat_dims[i],
                 out_channels=feat_dims[i+1],
                 kernel_size=4,

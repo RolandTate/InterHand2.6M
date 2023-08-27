@@ -153,7 +153,7 @@ class Grapher(nn.Module):
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.relative_pos = None
         if relative_pos:
-            print('using relative_pos')
+            # print('using relative_pos')
             relative_pos_tensor = torch.from_numpy(np.float32(get_2d_relative_pos_embed(in_channels,
                 int(n**0.5)))).unsqueeze(0).unsqueeze(1)
             relative_pos_tensor = F.interpolate(

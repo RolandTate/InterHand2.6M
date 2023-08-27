@@ -17,6 +17,8 @@ import torchvision.transforms as transforms
 
 from config import cfg
 from dataset import Dataset
+
+from main.model import get_model_GNN
 from timer import Timer
 from logger import colorlogger
 from torch.nn.parallel.data_parallel import DataParallel
@@ -88,7 +90,8 @@ class Trainer(Base):
     def _make_model(self):
         # prepare network
         self.logger.info("Creating graph and optimizer...")
-        model = get_model('train', self.joint_num)
+        # model = get_model('train', self.joint_num)
+        model = get_model_GNN()
         model = DataParallel(model).cuda()
         optimizer = self.get_optimizer(model)
         if cfg.continue_train:
