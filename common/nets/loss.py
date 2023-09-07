@@ -20,6 +20,14 @@ class JointHeatmapLoss(nn.Module):
         loss = (joint_out - joint_gt)**2 * joint_valid[:,:,None,None,None]
         return loss
 
+class JointCoordLoss(nn.Module):
+    def __ini__(self):
+        super(JointCoordLoss, self).__init__()
+
+    def forward(self, joint_out, joint_gt):
+        loss = (joint_out - joint_gt)**2
+        return loss
+
 class HandTypeLoss(nn.Module):
     def __init__(self):
         super(HandTypeLoss, self).__init__()

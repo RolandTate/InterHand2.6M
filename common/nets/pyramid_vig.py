@@ -238,7 +238,7 @@ class DeepGCN(torch.nn.Module):
         B, C, H, W = x.shape
         for i in range(len(self.backbone)):
             x = self.backbone[i](x)
-        x1, x2 = torch.tensor(x), torch.tensor(x)
+        x1, x2 = x.clone().detach(), x.clone().detach()
         for i in range(len(self.pose_predict1)):
             x1 = self.pose_predict1[i](x1)
         x1 = x1.view(-1, 21, 64, 64, 64)
@@ -271,9 +271,9 @@ def pvig_s_224_gelu(pretrained=False, **kwargs):
             self.epsilon = 0.2  # gcn的随机采样率
             self.use_stochastic = False  # gcn的随机性
             self.drop_path = drop_path_rate
-            self.blocks = [2, 2, 6, 2, 1, 1, 1]  # 各层的block个数
+            self.blocks = [1, 1, 1, 1, 1, 1, 1]  # 各层的block个数
             # self.channels = [80, 160, 400, 640]  # 各层的通道数
-            self.channels = [256, 512, 1024, 2048, 1024, 512, 1344]   # 各层的通道数
+            self.channels = [80, 160, 320, 2048, 640, 512, 1344]   # 各层的通道数
             self.n_classes = num_classes  # 分类器输出通道数
             self.emb_dims = 1024  # 嵌入尺寸
 
@@ -282,38 +282,6 @@ def pvig_s_224_gelu(pretrained=False, **kwargs):
     model.default_cfg = default_cfgs['vig_224_gelu']
     return model
 
-class GAT_PoseNet(torch.nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(GAT_PoseNet, self).__init__()
-
-        self.GATConv1 = GATConv(input_dim,1024)
-        self.bn1 = BatchNorm(1024)
-
-        self.GATConv2 = GATConv(1024,1024)
-        self.bn2 = BatchNorm(1024)
-
-        self.linear = nn.Sequential(
-            nn.Linear(1024,256),
-            nn.ReLU(inplace=True),
-            nn.Linear(256,output_dim)
-        )
-
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-
-        x = self.GATConv1(x, edge_index)
-        x = self.bn1(x)
-        x = F.relu(x)
-
-        x = self.GATConv2(x, edge_index)
-        x = self.bn2(x)
-        x = F.relu(x)
-
-        x = self.linear(x)
-
-        out = F.log_softmax(x, dim=1)
-
-        return out
 
 
 

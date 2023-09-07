@@ -91,7 +91,7 @@ class Trainer(Base):
         # prepare network
         self.logger.info("Creating graph and optimizer...")
         # model = get_model('train', self.joint_num)
-        model = get_model_GNN()
+        model = get_model_GNN('train', self.joint_num)
         model = DataParallel(model).cuda()
         optimizer = self.get_optimizer(model)
         if cfg.continue_train:
