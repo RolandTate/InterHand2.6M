@@ -225,6 +225,8 @@ class BGAT(nn.Module):
         self.out_att = GraphAttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
 
     def forward(self, x, adj):
+        residual = x
+
         x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj) for att in self.attentions], dim=2)
         x = F.dropout(x, self.dropout, training=self.training)

@@ -25,7 +25,7 @@ class JointCoordLoss(nn.Module):
         super(JointCoordLoss, self).__init__()
 
     def forward(self, joint_out, joint_gt):
-        loss = (joint_out - joint_gt)**2
+        loss = np.sqrt((joint_out - joint_gt)**2)
         return loss
 
 class HandTypeLoss(nn.Module):
