@@ -149,7 +149,7 @@ class GAT_PoseNet(nn.Module):
     def build_hand_adj(self):
         num_nodes = 21
         single_adj_matrix = np.zeros((num_nodes, num_nodes), dtype=int)
-        cross_adj_matrix = np.ones((num_nodes*2, num_nodes*2), dtype=int)
+        cross_adj_matrix = np.zeros((num_nodes*2, num_nodes*2), dtype=int)
 
         # # 定义节点之间的连接关系
         single_connections = [
@@ -180,10 +180,10 @@ class GAT_PoseNet(nn.Module):
             single_adj_matrix[i][j] = 1
             single_adj_matrix[j][i] = 1
 
-        for connection in cross_connections:
-            i, j = connection
-            cross_adj_matrix[i][j] = 0
-            cross_adj_matrix[j][i] = 0
+        for i in range(num_nodes):
+            for j in range(num_nodes, 2 * num_nodes):
+                cross_adj_matrix[i][j] = 1
+                cross_adj_matrix[j][i] = 1
 
         # print(adj_matrix)
         return torch.tensor(single_adj_matrix), torch.tensor(cross_adj_matrix)
