@@ -130,8 +130,8 @@ class GAT_PoseNet(nn.Module):
         self.GATBlock2 = GATBlock(1024, 512, 256)
         self.joint_linear = make_linear_layers([256, 64, 3])
 
-        self.root_fc = make_linear_layers([2048, 512, cfg.output_root_hm_shape], relu_final=False)
-        self.hand_fc = make_linear_layers([2048, 512, 2], relu_final=False)
+        self.root_fc = make_linear_layers([21, 12, 3], relu_final=False)
+        self.hand_fc = make_linear_layers([21, 8, 2], relu_final=False)
 
         adjs = self.build_hand_adj()
         self.single_adj = adjs[0].cuda()
@@ -141,7 +141,7 @@ class GAT_PoseNet(nn.Module):
 
     def soft_argmax_1d(self, heatmap1d):
         heatmap1d = F.softmax(heatmap1d, 1)
-        accu = heatmap1d * torch.arange(cfg.output_root_hm_shape).float().cuda()[None, :]
+        accu = heatmap1d * torch.arange(3).float().cuda()[None, :]
         coord = accu.sum(dim=1)
         return coord
 
@@ -196,15 +196,14 @@ class GAT_PoseNet(nn.Module):
         # joint_coord3d_1 = self.joint_hand_GAT_1(joint_coord3d_1, self.hand_adj)
         # joint_coord3d_1 = self.joint_linear_1(joint_coord3d_1)
 
-        joint_img_feat_1 = self.joint_deconv_1(img_feat)  #16, 3, 256,256->16，2048，8，8->16, 21, 64,64->16,21,64x64
         # 16, 3, 256,256->16，2048，8，8->16,21x64,64,64->16,21,64,64,64
-        joint_img_feat_1 = joint_img_feat_1.clone().view(joint_img_feat_1.size(0), joint_img_feat_1.size(1), -1)
+        joint_img_feat_1 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
         # joint_coord3d_1 = self.joint_full_GAT_1(joint_img_feat_1, self.fuc_adj)
         # joint_coord3d_1 = self.joint_hand_GAT_1(joint_coord3d_1, self.hand_adj)
         # joint_coord3d_1 = self.joint_linear_1(joint_coord3d_1)
 
-        joint_img_feat_2 = self.joint_deconv_2(img_feat)
-        joint_img_feat_2 = joint_img_feat_2.clone().view(joint_img_feat_2.size(0), joint_img_feat_2.size(1), -1)
+
+        joint_img_feat_2 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
         # joint_coord3d_2 = self.joint_full_GAT_2(joint_img_feat_2, self.fuc_adj)
         # joint_coord3d_2 = self.joint_hand_GAT_2(joint_coord3d_2, self.hand_adj)
         # joint_coord3d_2 = self.joint_linear_2(joint_coord3d_2)
@@ -217,7 +216,7 @@ class GAT_PoseNet(nn.Module):
         # joint_coord3d = torch.cat([joint_coord3d_1, joint_coord3d_2], 1)
         # joint_coord3d = joint_coord3d_1
 
-        img_feat_gap = F.avg_pool2d(img_feat, (img_feat.shape[2], img_feat.shape[3])).view(-1, 2048)
+        img_feat_gap = F.avg_pool2d(img_feat, (img_feat.shape[2], img_feat.shape[3])).view(-1, 21)
         root_heatmap1d = self.root_fc(img_feat_gap)
         root_depth = self.soft_argmax_1d(root_heatmap1d).view(-1, 1)
         hand_type = torch.sigmoid(self.hand_fc(img_feat_gap))
