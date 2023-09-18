@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
-from config import cfg
+from main.config import cfg
 import math
 
 class JointHeatmapLoss(nn.Module):
@@ -20,12 +20,21 @@ class JointHeatmapLoss(nn.Module):
         loss = (joint_out - joint_gt)**2 * joint_valid[:,:,None,None,None]
         return loss
 
+class MPJPELoss(nn.Module):
+    def __int__(self):
+        super(MPJPELoss).__int__()
+
+    def forward(self, joint_out, joint_gt):
+        loss = torch.sqrt(torch.sum((joint_out - joint_gt)**2, dim=2))
+        return loss
+
+
 class JointCoordLoss(nn.Module):
     def __ini__(self):
         super(JointCoordLoss, self).__init__()
 
     def forward(self, joint_out, joint_gt):
-        loss = np.sqrt((joint_out - joint_gt)**2)
+        loss = torch.sqrt((joint_out - joint_gt)**2)
         return loss
 
 class HandTypeLoss(nn.Module):

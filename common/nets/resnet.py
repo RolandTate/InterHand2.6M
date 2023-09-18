@@ -7,7 +7,7 @@
 
 import os
 import os.path as osp
-from config import cfg
+from main.config import cfg
 import torch
 import torch.nn as nn
 from torchvision.models.resnet import BasicBlock, Bottleneck

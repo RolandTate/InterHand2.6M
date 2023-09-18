@@ -10,6 +10,8 @@ from config import cfg
 import torch
 from base import Trainer
 import torch.backends.cudnn as cudnn
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 def parse_args():
     parser = argparse.ArgumentParser()

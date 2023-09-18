@@ -11,7 +11,8 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 import math
-from config import cfg
+from main.config import cfg
+import numpy as np
 from torch_geometric.nn import GATConv, BatchNorm
 
 
@@ -179,7 +180,7 @@ def make_deconv3d_layers(feat_dims, bnrelu_final=True):
 class GraphAttentionLayer(nn.Module):
 
     def __init__(self, in_features, out_features, dropout, alpha, concat=True):
-        super(GraphAttentionLayer, self).__init__()
+        super().__init__()
         self.dropout = dropout
         self.in_features = in_features
         self.out_features = out_features
@@ -214,15 +215,15 @@ class GraphAttentionLayer(nn.Module):
 
 
 class BGAT(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout=0.6, alpha=0.2, nheads=1):
-        super(BGAT, self).__init__()
+    def __init__(self, in_features, hid_features, out_features, dropout=0.6, alpha=0.2, heads_num=1, training=True):
+        super().__init__()
         self.dropout = dropout
-
-        self.attentions = [GraphAttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nheads)]
+        self.training = training
+        self.attentions = [GraphAttentionLayer(in_features, hid_features, dropout=dropout, alpha=alpha, concat=True) for _ in range(heads_num)]
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
-        self.out_att = GraphAttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
+        self.out_att = GraphAttentionLayer(hid_features * heads_num, out_features, dropout=dropout, alpha=alpha, concat=False)
 
     def forward(self, x, adj):
         residual = x
@@ -232,4 +233,39 @@ class BGAT(nn.Module):
         x = F.dropout(x, self.dropout, training=self.training)
         x = F.elu(self.out_att(x, adj))
         return F.log_softmax(x, dim=1)
+
+
+class MLP_GAT_Block(nn.Module):
+    def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
+        super().__init__()
+        self.dropout = dropout
+
+        self.mlp = make_linear_layers([in_features, out_features])
+        self.attentions = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+
+    def forward(self, x, adj):
+        out = self.mlp(x)
+        residual = out
+        out = F.relu(out)
+        out = self.attentions(out, adj)
+        out = F.elu(out)
+        out += residual
+        return F.relu(out)
+
+
+class GATBlock(nn.Module):
+    def __init__(self, in_feature, hid_feature, out_feature):
+        super().__init__()
+        self.single_attention_1 = MLP_GAT_Block(in_feature, hid_feature)
+        self.single_attention_2 = MLP_GAT_Block(in_feature, hid_feature)
+        self.cross_attention = MLP_GAT_Block(hid_feature, out_feature)
+
+    def forward(self, x1, x2, single_adj, cross_adj):
+        out1 = self.single_attention_1(x1, single_adj)
+        out2 = self.single_attention_2(x2, single_adj)
+
+        out = torch.cat([out1, out2], 1)
+        out = self.cross_attention(out, cross_adj)
+
+        return out
 

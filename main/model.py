@@ -8,10 +8,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from nets.module import BackboneNet, PoseNet
-from nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss
+from common.nets.module import BackboneNet, PoseNet
+from common.nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss
 
-from common.nets.loss import JointCoordLoss
+from common.nets.loss import JointCoordLoss, MPJPELoss
 from common.nets.module import GAT_PoseNet
 from common.nets.pyramid_vig import pvig_s_224_gelu
 from config import cfg
@@ -73,21 +73,21 @@ class Model(nn.Module):
         elif mode == 'test':
             out = {}
             val_z, idx_z = torch.max(joint_heatmap_out, 2)
-            # val_z.shape: torch.Size([1, 42, 64, 64]), idx_z.shape: torch.Size([1, 42, 64, 64])
+            # val_z.shape: torch.Size([16, 42, 64, 64]), idx_z.shape: torch.Size([1, 42, 64, 64])
             val_zy, idx_zy = torch.max(val_z, 2)
-            # val_zy.shape: torch.Size([1, 42, 64]), idx_zy.shape: torch.Size([1, 42, 64])
+            # val_zy.shape: torch.Size([16, 42, 64]), idx_zy.shape: torch.Size([1, 42, 64])
             val_zyx, joint_x = torch.max(val_zy, 2)
-            # val_zyx.shape: torch.Size([1, 42]), joint_x.shape: torch.Size([1, 42])
+            # val_zyx.shape: torch.Size([16, 42]), joint_x.shape: torch.Size([1, 42])
             joint_x = joint_x[:, :, None]
-            # joint_x.shape: torch.Size([1, 42, 1])
+            # joint_x.shape: torch.Size([16, 42, 1])
             joint_y = torch.gather(idx_zy, 2, joint_x)
-            # joint_y.shape: torch.Size([1, 42, 1])
+            # joint_y.shape: torch.Size([16, 42, 1])
             joint_z = torch.gather(idx_z, 2, joint_y[:, :, :, None].repeat(1, 1, 1, cfg.output_hm_shape[1]))[:, :, 0, :]
-            # joint_z.shape: torch.Size([1, 42, 64])
+            # joint_z.shape: torch.Size([16, 42, 64])
             joint_z = torch.gather(joint_z, 2, joint_x)
-            # joint_z.shape: torch.Size([1, 42, 1])
+            # joint_z.shape: torch.Size([16, 42, 1])
             joint_coord_out = torch.cat((joint_x, joint_y, joint_z), 2).float()
-            # joint_coord_out.shape: torch.Size([1, 42, 3])
+            # joint_coord_out.shape: torch.Size([16, 42, 3])
             out['joint_coord'] = joint_coord_out
             out['rel_root_depth'] = rel_root_depth_out
             out['hand_type'] = hand_type
@@ -112,17 +112,18 @@ class GNN_Model(nn.Module):
 
         # loss functions
         self.joint_coord_loss = JointCoordLoss()
+        self.mpjpe_loss = MPJPELoss()
         self.rel_root_depth_loss = RelRootDepthLoss()
         self.hand_type_loss = HandTypeLoss()
 
     def forward(self, inputs, targets, meta_info, mode):
         input_img = inputs['img']
         img_feat = self.backbone_net(input_img)
-        joint_coord3d, rel_root_depth_out, hand_type = self.gat_pose_net(img_feat)
+        joint_coord3d, rel_root_depth_out, hand_type = self.gat_pose_net(img_feat)  # 16，21， 3
 
         if mode == 'train':
             loss = {}
-            loss['joint_heatmap'] = self.joint_coord_loss(joint_coord3d, targets['joint_coord'])
+            loss['joint_heatmap'] = self.mpjpe_loss(joint_coord3d, targets['joint_coord'])
             loss['rel_root_depth'] = self.rel_root_depth_loss(rel_root_depth_out, targets['rel_root_depth'],
                                                               meta_info['root_valid'])
             loss['hand_type'] = self.hand_type_loss(hand_type, targets['hand_type'], meta_info['hand_type_valid'])
