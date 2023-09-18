@@ -8,7 +8,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from common.nets.module import BackboneNet, PoseNet
+from common.nets.module import BackboneNet, PoseNet, EasyBackboneNet
 from common.nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss
 
 from common.nets.loss import JointCoordLoss, MPJPELoss
@@ -170,12 +170,9 @@ def get_model(mode, joint_num):
     return model
 
 
-def get_model_GNN(mode, joint_num):
-    backbone_net = BackboneNet()
+def get_model_GNN(joint_num):
+    backbone_net = EasyBackboneNet()
     gat_pose_net = GAT_PoseNet(joint_num)
-
-    if mode == 'train':
-        backbone_net.init_weights()
 
     model = GNN_Model(backbone_net, gat_pose_net)
     return model

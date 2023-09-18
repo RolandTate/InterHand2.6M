@@ -14,7 +14,7 @@ from nets.layer import make_linear_layers, make_conv_layers, make_deconv_layers,
 from nets.resnet import ResNetBackbone
 import math
 
-from common.nets.layer import make_GAT_layers, BGAT, GATBlock
+from common.nets.layer import make_GAT_layers, BGAT, GATBlock, ResidualBlock
 
 
 class BackboneNet(nn.Module):
@@ -28,6 +28,37 @@ class BackboneNet(nn.Module):
     def forward(self, img):
         img_feat = self.resnet(img)
         return img_feat
+
+
+class EasyBackboneNet(nn.Module):
+    def __init__(self):
+        super(EasyBackboneNet, self).__init__()
+        self.net = self.make_BackboneNet()
+
+    def resnet_block(self, input_channels, num_channels, num_residuals,
+                     first_block=False):
+        blk = []
+        for i in range(num_residuals):
+            if i == 0 and not first_block:
+                blk.append(ResidualBlock(input_channels, num_channels,
+                                    use_1x1conv=True, strides=2))
+            else:
+                blk.append(ResidualBlock(num_channels, num_channels))
+        return blk
+
+    def make_BackboneNet(self):
+        b1 = nn.Sequential(*self.resnet_block(3, 3, 2, first_block=True))
+        b2 = nn.Sequential(*self.resnet_block(3, 12, 2))
+        b3 = nn.Sequential(*self.resnet_block(12, 21, 2))
+
+        net = nn.Sequential(b1, b2, b3)
+        return net
+
+    def forward(self, img):
+        img_feat = self.net(img)
+        return img_feat
+
+
 
 class PoseNet(nn.Module):
     def __init__(self, joint_num):
