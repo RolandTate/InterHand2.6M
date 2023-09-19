@@ -57,8 +57,9 @@ joint_type = {'right': np.arange(0,joint_num), 'left': np.arange(joint_num,joint
 skeleton = load_skeleton(osp.join('../data/InterHand2.6M/annotations/skeleton.txt'), joint_num*2)
 
 # snapshot load
-model_path = './snapshot_%d.pth.tar' % int(args.test_epoch)
+# model_path = './snapshot_%d.pth.tar' % int(args.test_epoch)
 # model_path = '../output/model_dump/snapshot_6.pth.tar'
+model_path = '../output/model_dump/snapshot_2.pth.tar'
 assert osp.exists(model_path), 'Cannot find model at ' + model_path
 print('Load checkpoint from {}'.format(model_path))
 model = get_model('test', joint_num)

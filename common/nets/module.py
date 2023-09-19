@@ -136,6 +136,7 @@ class GAT_PoseNet(nn.Module):
         adjs = self.build_hand_adj()
         self.single_adj = adjs[0].cuda()
         self.cross_adj = adjs[1].cuda()
+        self.full_single_adj = torch.tensor(np.zeros((21, 21), dtype=int)).cuda()
         # self.hand_adj = self.build_hand_adj().cuda()
         # self.fuc_adj = torch.ones(21, 21).cuda()
 
@@ -158,20 +159,6 @@ class GAT_PoseNet(nn.Module):
             (0, 9), (9, 10), (10, 11), (11, 12),  # 手指3
             (0, 13), (13, 14), (14, 15), (15, 16),  # 手指4
             (0, 17), (17, 18), (18, 19), (19, 20)  # 手指5
-        ]
-
-        # 定义节点之间的连接关系
-        cross_connections = [
-            (0, 1), (1, 2), (2, 3), (3, 4),  # 手指1
-            (0, 5), (5, 6), (6, 7), (7, 8),  # 手指2
-            (0, 9), (9, 10), (10, 11), (11, 12),  # 手指3
-            (0, 13), (13, 14), (14, 15), (15, 16),  # 手指4
-            (0, 17), (17, 18), (18, 19), (19, 20),  # 手指5
-            (21, 22), (22, 23), (23, 24), (24, 25),  # 手指6
-            (21, 26), (26, 27), (27, 28), (28, 29),  # 手指7
-            (21, 30), (30, 31), (31, 32), (32, 33),  # 手指3
-            (21, 34), (34, 35), (35, 36), (36, 37),  # 手指4
-            (21, 38), (38, 39), (39, 40), (40, 41)  # 手指10
         ]
 
         # 根据连接关系更新邻接矩阵
@@ -208,7 +195,8 @@ class GAT_PoseNet(nn.Module):
         # joint_coord3d_2 = self.joint_hand_GAT_2(joint_coord3d_2, self.hand_adj)
         # joint_coord3d_2 = self.joint_linear_2(joint_coord3d_2)
 
-        cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.single_adj, self.cross_adj)
+
+        cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.full_single_adj, self.cross_adj)
         joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
         joint_coord3d = self.GATBlock2(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
         joint_coord3d = self.joint_linear(joint_coord3d)
