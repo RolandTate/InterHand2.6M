@@ -128,7 +128,8 @@ class GAT_PoseNet(nn.Module):
 
         self.GATBlock1 = GATBlock(4096, 2048, 1024)
         self.GATBlock2 = GATBlock(1024, 512, 256)
-        self.joint_linear = make_linear_layers([256, 64, 3])
+        self.GATBlock3 = GATBlock(256, 64, 3)
+        # self.joint_linear = make_linear_layers([256, 64, 3])
 
         self.root_fc = make_linear_layers([21, 12, 3], relu_final=False)
         self.hand_fc = make_linear_layers([21, 8, 2], relu_final=False)
@@ -199,7 +200,7 @@ class GAT_PoseNet(nn.Module):
         cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.full_single_adj, self.cross_adj)
         joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
         joint_coord3d = self.GATBlock2(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
-        joint_coord3d = self.joint_linear(joint_coord3d)
+        # joint_coord3d = self.joint_linear(joint_coord3d)
 
         # joint_coord3d = torch.cat([joint_coord3d_1, joint_coord3d_2], 1)
         # joint_coord3d = joint_coord3d_1

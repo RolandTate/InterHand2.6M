@@ -262,29 +262,51 @@ class BGAT(nn.Module):
 
 
 class MLP_GAT_Block(nn.Module):
-    def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
+    def __init__(self, in_features, hid_features, out_features, dropout=0.6, alpha=0.2):
         super().__init__()
         self.dropout = dropout
 
         self.mlp = make_linear_layers([in_features, out_features])
-        self.attentions = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+        self.att_fc = GraphAttentionLayer(out_features, hid_features, dropout=dropout, alpha=alpha, concat=True)
+        self.att_hand = GraphAttentionLayer(hid_features, out_features, dropout=dropout, alpha=alpha, concat=True)
 
     def forward(self, x, adj):
         out = self.mlp(x)
+        adj_fc = torch.ones_like(adj).to(adj.device)
         residual = out
-        out = F.relu(out)
-        out = self.attentions(out, adj)
+        out = self.att_fc(F.relu(out), adj_fc)
         out = F.elu(out)
         out += residual
+
+        residual = out
+        out = self.att_hand(F.relu(out), adj)
+        out = F.elu(out)
+        out += residual
+        return F.relu(out)
+
+
+class Cross_GAT_Block(nn.Module):
+    def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
+        super().__init__()
+        self.dropout = dropout
+
+
+        self.attentions = GraphAttentionLayer(in_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+
+    def forward(self, x, adj):
+        out = F.relu(x)
+        out = self.attentions(out, adj)
+        out = F.elu(out)
+        out += x
         return F.relu(out)
 
 
 class GATBlock(nn.Module):
     def __init__(self, in_feature, hid_feature, out_feature):
         super().__init__()
-        self.single_attention_1 = MLP_GAT_Block(in_feature, hid_feature)
-        self.single_attention_2 = MLP_GAT_Block(in_feature, hid_feature)
-        self.cross_attention = MLP_GAT_Block(hid_feature, out_feature)
+        self.single_attention_1 = MLP_GAT_Block(in_feature, hid_feature, out_feature)
+        self.single_attention_2 = MLP_GAT_Block(in_feature, hid_feature, out_feature)
+        self.cross_attention = Cross_GAT_Block(out_feature, out_feature)
 
     def forward(self, x1, x2, single_adj, cross_adj):
         out1 = self.single_attention_1(x1, single_adj)
