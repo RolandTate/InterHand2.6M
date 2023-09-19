@@ -266,18 +266,21 @@ class MLP_GAT_Block(nn.Module):
         super().__init__()
         self.dropout = dropout
 
-        self.mlp = make_linear_layers([in_features, out_features])
-        self.att_fc = GraphAttentionLayer(out_features, hid_features, dropout=dropout, alpha=alpha, concat=True)
-        self.att_hand = GraphAttentionLayer(hid_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+        self.mlp1 = make_linear_layers([in_features, hid_features])
+        self.mlp2 = make_linear_layers([hid_features, out_features])
+        self.att_fc = GraphAttentionLayer(hid_features, hid_features, dropout=dropout, alpha=alpha, concat=True)
+        self.att_hand = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
 
     def forward(self, x, adj):
-        out = self.mlp(x)
         adj_fc = torch.ones_like(adj).to(adj.device)
+
+        out = self.mlp1(x)
         residual = out
         out = self.att_fc(F.relu(out), adj_fc)
         out = F.elu(out)
         out += residual
 
+        out = self.mlp2(out)
         residual = out
         out = self.att_hand(F.relu(out), adj)
         out = F.elu(out)

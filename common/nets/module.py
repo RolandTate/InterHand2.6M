@@ -197,9 +197,11 @@ class GAT_PoseNet(nn.Module):
         # joint_coord3d_2 = self.joint_linear_2(joint_coord3d_2)
 
 
-        cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.full_single_adj, self.cross_adj)
+        cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.single_adj, self.cross_adj)
         joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
-        joint_coord3d = self.GATBlock2(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
+        cross_joint_coord3d = self.GATBlock2(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
+        joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
+        joint_coord3d = self.GATBlock3(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
         # joint_coord3d = self.joint_linear(joint_coord3d)
 
         # joint_coord3d = torch.cat([joint_coord3d_1, joint_coord3d_2], 1)
