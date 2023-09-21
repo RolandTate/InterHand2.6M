@@ -31,6 +31,8 @@ class Model(nn.Module):
         self.rel_root_depth_loss = RelRootDepthLoss()
         self.hand_type_loss = HandTypeLoss()
 
+        self.mpjpe_loss = MPJPELoss()
+
     def render_gaussian_heatmap(self, joint_coord):
         x = torch.arange(cfg.output_hm_shape[2])  # 64
         y = torch.arange(cfg.output_hm_shape[1])  # 64
@@ -64,6 +66,7 @@ class Model(nn.Module):
             # target_joint_heatmap.shape: torch.Size([16, 42, 64, 64, 64])
 
             loss = {}
+            # loss['joint_heatmap'] = self.mpjpe_loss(joint_coord_out, targets['joint_coord'])
             loss['joint_heatmap'] = self.joint_heatmap_loss(joint_heatmap_out, target_joint_heatmap,
                                                             meta_info['joint_valid'])
             loss['rel_root_depth'] = self.rel_root_depth_loss(rel_root_depth_out, targets['rel_root_depth'],
@@ -111,10 +114,31 @@ class GNN_Model(nn.Module):
         self.gat_pose_net = gat_pose_net
 
         # loss functions
+        self.joint_heatmap_loss = JointHeatmapLoss()
         self.joint_coord_loss = JointCoordLoss()
         self.mpjpe_loss = MPJPELoss()
         self.rel_root_depth_loss = RelRootDepthLoss()
         self.hand_type_loss = HandTypeLoss()
+
+
+    def render_gaussian_heatmap(self, joint_coord):
+        x = torch.arange(cfg.output_hm_shape[2])  # 64
+        y = torch.arange(cfg.output_hm_shape[1])  # 64
+        z = torch.arange(cfg.output_hm_shape[0])  # 64
+        zz, yy, xx = torch.meshgrid(z, y, x)
+        xx = xx[None, None, :, :, :].cuda().float();
+        yy = yy[None, None, :, :, :].cuda().float();
+        zz = zz[None, None, :, :, :].cuda().float();
+        # xx.shape: {[1, 1, 64, 64, 64]}
+        x = joint_coord[:, :, 0, None, None, None];
+        y = joint_coord[:, :, 1, None, None, None];
+        z = joint_coord[:, :, 2, None, None, None];
+        # x.shape: {16, 42, 1, 1, 1}
+        heatmap = torch.exp(
+            -(((xx - x) / cfg.sigma) ** 2) / 2 - (((yy - y) / cfg.sigma) ** 2) / 2 - (((zz - z) / cfg.sigma) ** 2) / 2)
+        heatmap = heatmap * 255
+        return heatmap
+
 
     def forward(self, inputs, targets, meta_info, mode):
         input_img = inputs['img']
@@ -122,8 +146,13 @@ class GNN_Model(nn.Module):
         joint_coord3d, rel_root_depth_out, hand_type = self.gat_pose_net(img_feat)  # 16，21， 3
 
         if mode == 'train':
+            pre_joint_heatmap = self.render_gaussian_heatmap(joint_coord3d)
+            target_joint_heatmap = self.render_gaussian_heatmap(targets['joint_coord'])
+
             loss = {}
-            loss['joint_heatmap'] = self.mpjpe_loss(joint_coord3d, targets['joint_coord'])
+            # loss['joint_heatmap'] = self.mpjpe_loss(joint_coord3d, targets['joint_coord'])
+            loss['joint_heatmap'] = self.joint_heatmap_loss(pre_joint_heatmap, target_joint_heatmap,
+                                                            meta_info['joint_valid'])
             loss['rel_root_depth'] = self.rel_root_depth_loss(rel_root_depth_out, targets['rel_root_depth'],
                                                               meta_info['root_valid'])
             loss['hand_type'] = self.hand_type_loss(hand_type, targets['hand_type'], meta_info['hand_type_valid'])
