@@ -146,13 +146,13 @@ class GNN_Model(nn.Module):
         joint_coord3d, rel_root_depth_out, hand_type = self.gat_pose_net(img_feat)  # 16，21， 3
 
         if mode == 'train':
-            pre_joint_heatmap = self.render_gaussian_heatmap(joint_coord3d)
-            target_joint_heatmap = self.render_gaussian_heatmap(targets['joint_coord'])
+            # pre_joint_heatmap = self.render_gaussian_heatmap(joint_coord3d)
+            # target_joint_heatmap = self.render_gaussian_heatmap(targets['joint_coord'])
 
             loss = {}
-            # loss['joint_heatmap'] = self.mpjpe_loss(joint_coord3d, targets['joint_coord'])
-            loss['joint_heatmap'] = self.joint_heatmap_loss(pre_joint_heatmap, target_joint_heatmap,
-                                                            meta_info['joint_valid'])
+            loss['joint_coord'] = self.joint_coord_loss(joint_coord3d, targets['joint_coord'])
+            # loss['joint_heatmap'] = self.joint_heatmap_loss(pre_joint_heatmap, target_joint_heatmap,
+            #                                                 meta_info['joint_valid'])
             loss['rel_root_depth'] = self.rel_root_depth_loss(rel_root_depth_out, targets['rel_root_depth'],
                                                               meta_info['root_valid'])
             loss['hand_type'] = self.hand_type_loss(hand_type, targets['hand_type'], meta_info['hand_type_valid'])

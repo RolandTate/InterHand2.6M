@@ -26,6 +26,7 @@ class MPJPELoss(nn.Module):
 
     def forward(self, joint_out, joint_gt):
         loss = torch.sqrt(torch.sum((joint_out - joint_gt)**2, dim=2))
+
         return loss
 
 
@@ -34,7 +35,7 @@ class JointCoordLoss(nn.Module):
         super(JointCoordLoss, self).__init__()
 
     def forward(self, joint_out, joint_gt):
-        loss = torch.sqrt((joint_out - joint_gt)**2)
+        loss = torch.abs(joint_out - joint_gt)
         return loss
 
 class HandTypeLoss(nn.Module):

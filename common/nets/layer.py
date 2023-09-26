@@ -177,17 +177,13 @@ def make_deconv3d_layers(feat_dims, bnrelu_final=True):
     return nn.Sequential(*layers)
 
 
-class ResidualBlock(nn.Module):
-    def __init__(self, input_channels, num_channels,
-                 use_1x1conv=False, strides=1):
+class Residual(nn.Module):
+    def __init__(self, input_channels, num_channels, use_conv=False, strides=1):
         super().__init__()
-        self.conv1 = nn.Conv2d(input_channels, num_channels,
-                               kernel_size=3, padding=1, stride=strides)
-        self.conv2 = nn.Conv2d(num_channels, num_channels,
-                               kernel_size=3, padding=1)
-        if use_1x1conv:
-            self.conv3 = nn.Conv2d(input_channels, num_channels,
-                                   kernel_size=1, stride=strides)
+        self.conv1 = nn.Conv2d(input_channels, num_channels, kernel_size=3, padding=1, stride=strides)
+        self.conv2 = nn.Conv2d(num_channels, num_channels, kernel_size=3, padding=1)
+        if use_conv:
+            self.conv3 = nn.Conv2d(input_channels, num_channels, kernel_size=1, stride=strides)
         else:
             self.conv3 = None
         self.bn1 = nn.BatchNorm2d(num_channels)
@@ -198,7 +194,6 @@ class ResidualBlock(nn.Module):
         Y = self.bn2(self.conv2(Y))
         if self.conv3:
             X = self.conv3(X)
-        # print(f'Y.shape: {Y.shape}, X.shape: {X.shape}')
         Y += X
         return F.relu(Y)
 
@@ -288,12 +283,41 @@ class MLP_GAT_Block(nn.Module):
         return F.relu(out)
 
 
-class Cross_GAT_Block(nn.Module):
+class Conv_GAT_Block(nn.Module):
     def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
         super().__init__()
         self.dropout = dropout
 
+        self.Conv1 = Residual(21, 21)
+        self.Conv2 = Residual(21, 21, use_conv=True, strides=2)
+        self.att_fc = GraphAttentionLayer(in_features, in_features, dropout=dropout, alpha=alpha, concat=True)
+        self.att_hand = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
 
+    def forward(self, x, adj):
+        adj_fc = torch.ones_like(adj).to(adj.device)
+
+        out = self.Conv1(x)
+        residual = out
+        out = out.view(out.size(0), out.size(1), -1)
+        out = self.att_fc(F.relu(out), adj_fc)
+        out = F.elu(out)
+        out = out.view(residual.shape)
+        out += residual
+
+        out = self.Conv2(out)
+        residual = out
+        out = out.view(out.size(0), out.size(1), -1)
+        out = self.att_hand(F.relu(out), adj)
+        out = F.elu(out)
+        out = out.view(residual.shape)
+        out += residual
+        return F.relu(out)
+
+
+class Cross_GAT_Block(nn.Module):
+    def __init__(self, in_features, out_features, dropout=0.6, alpha=0.2):
+        super().__init__()
+        self.dropout = dropout
         self.attentions = GraphAttentionLayer(in_features, out_features, dropout=dropout, alpha=alpha, concat=True)
 
     def forward(self, x, adj):
@@ -305,10 +329,10 @@ class Cross_GAT_Block(nn.Module):
 
 
 class GATBlock(nn.Module):
-    def __init__(self, in_feature, hid_feature, out_feature):
+    def __init__(self, in_feature, out_feature):
         super().__init__()
-        self.single_attention_1 = MLP_GAT_Block(in_feature, hid_feature, out_feature)
-        self.single_attention_2 = MLP_GAT_Block(in_feature, hid_feature, out_feature)
+        self.single_attention_1 = Conv_GAT_Block(in_feature, out_feature)
+        self.single_attention_2 = Conv_GAT_Block(in_feature, out_feature)
         self.cross_attention = Cross_GAT_Block(out_feature, out_feature)
 
     def forward(self, x1, x2, single_adj, cross_adj):
@@ -316,7 +340,10 @@ class GATBlock(nn.Module):
         out2 = self.single_attention_2(x2, single_adj)
 
         out = torch.cat([out1, out2], 1)
+        shape = out.shape
+        out = out.view(out.size(0), out.size(1), -1)
         out = self.cross_attention(out, cross_adj)
+        out = out.view(shape)
 
         return out
 

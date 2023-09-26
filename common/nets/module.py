@@ -14,7 +14,7 @@ from nets.layer import make_linear_layers, make_conv_layers, make_deconv_layers,
 from nets.resnet import ResNetBackbone
 import math
 
-from common.nets.layer import make_GAT_layers, BGAT, GATBlock, ResidualBlock
+from common.nets.layer import make_GAT_layers, BGAT, GATBlock, Residual, MLP_GAT_Block
 
 
 class BackboneNet(nn.Module):
@@ -40,10 +40,10 @@ class EasyBackboneNet(nn.Module):
         blk = []
         for i in range(num_residuals):
             if i == 0 and not first_block:
-                blk.append(ResidualBlock(input_channels, num_channels,
-                                    use_1x1conv=True, strides=2))
+                blk.append(Residual(input_channels, num_channels,
+                                    use_conv=True, strides=2))
             else:
-                blk.append(ResidualBlock(num_channels, num_channels))
+                blk.append(Residual(num_channels, num_channels))
         return blk
 
     def make_BackboneNet(self):
@@ -126,10 +126,10 @@ class GAT_PoseNet(nn.Module):
         # self.joint_hand_GAT_2 = BGAT(1024, 512, 256)
         # self.joint_linear_2 = make_linear_layers([256, 64, 3])
 
-        self.GATBlock1 = GATBlock(4096, 2048, 1024)
-        self.GATBlock2 = GATBlock(1024, 512, 256)
-        self.GATBlock3 = GATBlock(256, 64, 3)
-        # self.joint_linear = make_linear_layers([256, 64, 3])
+        self.GATBlock1 = GATBlock(4096, 1024)
+        self.GATBlock2 = GATBlock(1024, 256)
+        self.GATBlock3 = GATBlock(256, 64)
+        self.joint_linear = make_linear_layers([64, 32, 16, 3])
 
         self.root_fc = make_linear_layers([21, 12, 3], relu_final=False)
         self.hand_fc = make_linear_layers([21, 8, 2], relu_final=False)
@@ -185,24 +185,25 @@ class GAT_PoseNet(nn.Module):
         # joint_coord3d_1 = self.joint_linear_1(joint_coord3d_1)
 
         # 16, 3, 256,256->16，2048，8，8->16,21x64,64,64->16,21,64,64,64
-        joint_img_feat_1 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
+        # joint_img_feat_1 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
         # joint_coord3d_1 = self.joint_full_GAT_1(joint_img_feat_1, self.fuc_adj)
         # joint_coord3d_1 = self.joint_hand_GAT_1(joint_coord3d_1, self.hand_adj)
         # joint_coord3d_1 = self.joint_linear_1(joint_coord3d_1)
 
 
-        joint_img_feat_2 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
+        # joint_img_feat_2 = img_feat.clone().view(img_feat.size(0), img_feat.size(1), -1)
         # joint_coord3d_2 = self.joint_full_GAT_2(joint_img_feat_2, self.fuc_adj)
         # joint_coord3d_2 = self.joint_hand_GAT_2(joint_coord3d_2, self.hand_adj)
         # joint_coord3d_2 = self.joint_linear_2(joint_coord3d_2)
 
 
-        cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.single_adj, self.cross_adj)
-        joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
-        cross_joint_coord3d = self.GATBlock2(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
-        joint_coord3d_1, cross_joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
-        joint_coord3d = self.GATBlock3(joint_coord3d_1, cross_joint_coord3d_2, self.single_adj, self.cross_adj)
-        # joint_coord3d = self.joint_linear(joint_coord3d)
+        cross_joint_coord3d = self.GATBlock1(img_feat, img_feat, self.single_adj, self.cross_adj)
+        joint_coord3d_1, joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
+        cross_joint_coord3d = self.GATBlock2(joint_coord3d_1, joint_coord3d_2, self.single_adj, self.cross_adj)
+        joint_coord3d_1, joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
+        joint_coord3d = self.GATBlock3(joint_coord3d_1, joint_coord3d_2, self.single_adj, self.cross_adj)
+        joint_coord3d = joint_coord3d.view(joint_coord3d.size(0), joint_coord3d.size(1), -1)
+        joint_coord3d = self.joint_linear(joint_coord3d)
 
         # joint_coord3d = torch.cat([joint_coord3d_1, joint_coord3d_2], 1)
         # joint_coord3d = joint_coord3d_1
