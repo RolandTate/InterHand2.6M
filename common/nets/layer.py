@@ -190,6 +190,8 @@ class Residual(nn.Module):
         self.bn2 = nn.BatchNorm2d(num_channels)
 
     def forward(self, X):
+        # print(f'Residual input X.shape: {X.shape}')
+        # X = torch.squeeze(X)
         Y = F.relu(self.bn1(self.conv1(X)))
         Y = self.bn2(self.conv2(Y))
         if self.conv3:

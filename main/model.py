@@ -199,9 +199,12 @@ def get_model(mode, joint_num):
     return model
 
 
-def get_model_GNN(joint_num):
-    backbone_net = EasyBackboneNet()
+def get_model_GNN(mode, joint_num):
+    backbone_net = BackboneNet()
     gat_pose_net = GAT_PoseNet(joint_num)
+
+    if mode == 'train':
+        backbone_net.init_weights()
 
     model = GNN_Model(backbone_net, gat_pose_net)
     return model
