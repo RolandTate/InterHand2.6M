@@ -290,29 +290,19 @@ class Conv_GAT_Block(nn.Module):
         super().__init__()
         self.dropout = dropout
 
-        self.Conv1 = Residual(21, 21)
-        self.Conv2 = Residual(21, 21, use_conv=True, strides=2)
-        self.att_fc = GraphAttentionLayer(in_features, in_features, dropout=dropout, alpha=alpha, concat=True)
-        self.att_hand = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+        self.Conv1 = Residual(21, 21, use_conv=True, strides=2)
+        # self.Conv2 = Residual(21, 21, use_conv=True)
+        self.att_global = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
+        self.att_local = GraphAttentionLayer(out_features, out_features, dropout=dropout, alpha=alpha, concat=True)
 
     def forward(self, x, adj):
         adj_fc = torch.ones_like(adj).to(adj.device)
-
         out = self.Conv1(x)
         residual = out
         out = out.view(out.size(0), out.size(1), -1)
-        out = self.att_fc(F.relu(out), adj_fc)
-        out = F.elu(out)
-        out = out.view(residual.shape)
-        out += residual
-
-        out = self.Conv2(out)
-        residual = out
-        out = out.view(out.size(0), out.size(1), -1)
-        out = self.att_hand(F.relu(out), adj)
-        out = F.elu(out)
-        out = out.view(residual.shape)
-        out += residual
+        out_global = F.elu(self.att_global(F.relu(out), adj_fc)).view(residual.shape)
+        out_local = F.elu(self.att_local(F.relu(out), adj)).view(residual.shape)
+        out = residual + out_global +out_local
         return F.relu(out)
 
 

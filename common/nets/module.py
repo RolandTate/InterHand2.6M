@@ -130,6 +130,7 @@ class GAT_PoseNet(nn.Module):
         self.GATBlock2 = GATBlock(1024, 256)
         self.GATBlock3 = GATBlock(256, 64)
         self.joint_linear = make_linear_layers([64, 32, 16, 3])
+        self.discriminator = make_linear_layers([64*21, 64, 32, 1], relu_final=False)
 
         self.root_fc = make_linear_layers([2048, 512, cfg.output_root_hm_shape], relu_final=False)
         self.hand_fc = make_linear_layers([2048, 512, 2], relu_final=False)
@@ -201,14 +202,24 @@ class GAT_PoseNet(nn.Module):
         # print(f'joint_img_feat_1.shape: {joint_img_feat_1.shape}, joint_img_feat_2.shape: {joint_img_feat_2.shape}')
         cross_joint_coord3d = self.GATBlock1(joint_img_feat_1, joint_img_feat_2, self.single_adj, self.cross_adj)
         joint_coord3d_1, joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
+
         cross_joint_coord3d = self.GATBlock2(joint_coord3d_1, joint_coord3d_2, self.single_adj, self.cross_adj)
         joint_coord3d_1, joint_coord3d_2 = torch.chunk(cross_joint_coord3d, 2, dim=1)
+
         joint_coord3d = self.GATBlock3(joint_coord3d_1, joint_coord3d_2, self.single_adj, self.cross_adj)
+        joint_coord3d_1, joint_coord3d_2 = torch.chunk(joint_coord3d, 2, dim=1)
+
+        joint_coord3d_1 = joint_coord3d_1.view(joint_coord3d_1.size(0), -1)
+        joint_coord3d_2 = joint_coord3d_2.view(joint_coord3d_2.size(0), -1)
         joint_coord3d = joint_coord3d.view(joint_coord3d.size(0), joint_coord3d.size(1), -1)
+
         joint_coord3d = self.joint_linear(joint_coord3d)
 
-        # joint_coord3d = torch.cat([joint_coord3d_1, joint_coord3d_2], 1)
-        # joint_coord3d = joint_coord3d_1
+        #print(f'joint_coord3d_1.shape {joint_coord3d_1.shape}, joint_coord3d_2.shape {joint_coord3d_2.shape}')
+        hand_feature_1 = self.discriminator(joint_coord3d_1)
+        hand_feature_1 = F.sigmoid(hand_feature_1)
+        hand_feature_2 = self.discriminator(joint_coord3d_2)
+        hand_feature_2 = F.sigmoid(hand_feature_2)
 
         img_feat_gap = F.avg_pool2d(img_feat, (img_feat.shape[2], img_feat.shape[3])).view(-1, 2048)
         # img_feat_gap.shape: torch.Size([16, 2048])
@@ -219,4 +230,4 @@ class GAT_PoseNet(nn.Module):
         hand_type = torch.sigmoid(self.hand_fc(img_feat_gap))
         # hand_type.shape: torch.Size([16, 2])
 
-        return joint_coord3d, root_depth, hand_type
+        return joint_coord3d, root_depth, hand_type, [hand_feature_1, hand_feature_2]

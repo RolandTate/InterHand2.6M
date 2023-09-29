@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from common.nets.module import BackboneNet, PoseNet, EasyBackboneNet
-from common.nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss
+from common.nets.loss import JointHeatmapLoss, HandTypeLoss, RelRootDepthLoss, DiscriminateLoss
 
 from common.nets.loss import JointCoordLoss, MPJPELoss
 from common.nets.module import GAT_PoseNet
@@ -119,6 +119,7 @@ class GNN_Model(nn.Module):
         self.mpjpe_loss = MPJPELoss()
         self.rel_root_depth_loss = RelRootDepthLoss()
         self.hand_type_loss = HandTypeLoss()
+        self.dis_loss = DiscriminateLoss()
 
 
     def render_gaussian_heatmap(self, joint_coord):
@@ -143,19 +144,21 @@ class GNN_Model(nn.Module):
     def forward(self, inputs, targets, meta_info, mode):
         input_img = inputs['img']
         img_feat = self.backbone_net(input_img)
-        joint_coord3d, rel_root_depth_out, hand_type = self.gat_pose_net(img_feat)  # 16，21， 3
+        joint_coord3d, rel_root_depth_out, hand_type, dis_feature= self.gat_pose_net(img_feat)  # 16，21， 3
 
         if mode == 'train':
             # pre_joint_heatmap = self.render_gaussian_heatmap(joint_coord3d)
             # target_joint_heatmap = self.render_gaussian_heatmap(targets['joint_coord'])
 
             loss = {}
-            loss['joint_coord'] = self.joint_coord_loss(joint_coord3d, targets['joint_coord'])
+            loss['joint_coord'] = 0.01 * self.joint_coord_loss(joint_coord3d, targets['joint_coord'])
             # loss['joint_heatmap'] = self.joint_heatmap_loss(pre_joint_heatmap, target_joint_heatmap,
             #                                                 meta_info['joint_valid'])
             loss['rel_root_depth'] = self.rel_root_depth_loss(rel_root_depth_out, targets['rel_root_depth'],
                                                               meta_info['root_valid'])
             loss['hand_type'] = self.hand_type_loss(hand_type, targets['hand_type'], meta_info['hand_type_valid'])
+
+            loss['discriminate'] = self.dis_loss(dis_feature)
             return loss
         elif mode == 'test':
             out = {}

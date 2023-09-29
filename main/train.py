@@ -67,7 +67,7 @@ def main():
                     trainer.tot_timer.average_time, trainer.gpu_timer.average_time, trainer.read_timer.average_time),
                 '%.2fh/epoch' % (trainer.tot_timer.average_time / 3600. * trainer.itr_per_epoch),
                 ]
-            screen += ['%s: %.4f' % ('loss_' + k, v.detach()) for k,v in loss.items()]
+            screen += ['%s: %.8f' % ('loss_' + k, v.detach()) for k,v in loss.items()]
             trainer.logger.info(' '.join(screen))
 
             trainer.tot_timer.toc()

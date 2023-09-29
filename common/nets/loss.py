@@ -57,3 +57,13 @@ class RelRootDepthLoss(nn.Module):
         loss = torch.abs(root_depth_out - root_depth_gt) * root_valid
         return loss
 
+class DiscriminateLoss(nn.Module):
+    def __int__(self):
+        super(DiscriminateLoss, self).__int__()
+
+    def forward(self, dis_feature):
+        loss1 = F.binary_cross_entropy(dis_feature[0], torch.ones_like(dis_feature[0]).cuda(), reduction='none')
+        loss2 = F.binary_cross_entropy(dis_feature[1], torch.zeros_like(dis_feature[1]).cuda(), reduction='none')
+        loss = loss1 + loss2
+
+        return loss

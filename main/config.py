@@ -30,7 +30,7 @@ class Config:
     ## training config
     lr_dec_epoch = [15, 17] if dataset == 'InterHand2.6M' else [45,47]
     end_epoch = 20 if dataset == 'InterHand2.6M' else 50
-    lr = 1e-4
+    lr = 5e-4
     lr_dec_factor = 10
     train_batch_size = 16
 
